@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>HR 담당자 모임 지도</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root{--ink:#1b2430;--sub:#5d6875;--line:#e3e7ec;--bg:#f6f8fa;--card:#fff;--brand:#2b4c7e;--accent:#c8191e;--kakao:#fee500}
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;height:100%;font-family:Pretendard,-apple-system,"Malgun Gothic",sans-serif;color:var(--ink);background:var(--bg)}
+  .app{display:grid;grid-template-columns:360px 1fr;grid-template-rows:auto 1fr;height:100vh}
+  header{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 18px;background:var(--card);border-bottom:1px solid var(--line)}
+  header h1{font-size:17px;margin:0;font-weight:700}
+  .stat{padding:4px 10px;border-radius:999px;font-size:12.5px;background:var(--bg);border:1px solid var(--line)}
+  .me{margin-left:auto;font-size:12.5px;color:var(--sub)}
+  .me b{color:var(--ink)}
+  .btn{padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+  .btn:disabled{opacity:.5;cursor:wait}
+  .admin{display:none}
+  .admin.on{display:inline-flex;gap:6px;align-items:center}
+  .admin-tag{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--accent);color:#fff}
+  aside{display:flex;flex-direction:column;min-height:0;background:var(--card);border-right:1px solid var(--line)}
+  .filters{padding:12px;display:grid;gap:8px;border-bottom:1px solid var(--line)}
+  .filters .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:14px;background:#fff}
+  textarea{resize:vertical;min-height:90px}
+  .count{font-size:12px;color:var(--sub);padding:8px 14px 4px}
+  ul{list-style:none;margin:0;padding:0 8px 12px;overflow:auto;flex:1}
+  li.m{padding:10px;border-radius:10px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+  li.m:hover{background:var(--bg)}
+  .nk{font-weight:700;font-size:14px}
+  .tg{font-size:12px;color:var(--sub);margin-top:2px}
+  .rg{font-size:11.5px;color:var(--sub);text-align:right;white-space:nowrap}
+  .chatlink{display:inline-block;margin-top:3px;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--kakao);color:#3c1e1e;text-decoration:none;font-weight:600}
+  .msg{padding:24px;text-align:center;color:var(--sub);font-size:14px;list-style:none}
+  #map{min-height:0}
+  .pop h3{margin:0 0 6px;font-size:14px}
+  .pop .p{font-size:12.5px;padding:5px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .pop .p button{font-size:11.5px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+  .rlabel{background:var(--brand);color:#fff;border-radius:999px;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .gate{position:fixed;inset:0;background:rgba(246,248,250,.98);display:none;align-items:flex-start;justify-content:center;z-index:3000;overflow:auto;padding:6vh 16px}
+  .gate.on{display:flex}
+  .gbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;width:min(420px,100%);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .gbox h2{margin:0 0 4px;font-size:18px}
+  .gbox p{margin:0 0 12px;font-size:13px;color:var(--sub);line-height:1.6}
+  .gtabs{display:flex;gap:6px;margin-bottom:12px}
+  .gtabs button{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-weight:600;cursor:pointer}
+  .gtabs button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  form.g{display:grid;gap:9px}
+  form.g label{font-size:12.5px;font-weight:600;margin-top:2px}
+  .consent{font-size:12px;color:var(--sub);background:var(--bg);border-radius:8px;padding:9px 10px;line-height:1.6}
+  .chk{display:flex;gap:6px;align-items:center;font-size:13px}
+  .chk input{width:auto}
+  .err{color:var(--accent);font-size:12.5px;min-height:1em}
+  .modal{position:fixed;inset:0;background:rgba(27,36,48,.45);display:none;align-items:flex-start;justify-content:center;z-index:2100;overflow:auto;padding:5vh 16px}
+  .modal.on{display:flex}
+  .sheet{background:#fff;border-radius:14px;width:min(560px,100%);padding:22px;box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .sheet.wide{width:min(900px,100%)}
+  .sheet h2{margin:0 0 4px;font-size:17px}
+  .lead{margin:0 0 12px;font-size:13px;color:var(--sub);line-height:1.6}
+  .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sheet label{display:block;font-size:13px;font-weight:600;margin:10px 0 5px}
+  .cat{margin:14px 0 4px;font-size:12.5px;font-weight:700;color:var(--brand)}
+  .frow{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .frow .fl{color:var(--sub);font-size:13px}
+  .fv{white-space:pre-wrap;word-break:break-all}
+  .empty{color:#aab2bb}
+  .fm{font-size:11.5px;color:#8a949e;margin-top:3px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px}
+  .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+  .post{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .post .top{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+  .post .t{font-weight:700;font-size:14.5px}
+  .post .meta{font-size:12px;color:var(--sub)}
+  .st{font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);margin-left:auto}
+  .st.해결{border-color:#2a9d8f;color:#2a9d8f}.st.안건상정{border-color:var(--brand);color:var(--brand)}
+  .post details p{white-space:pre-wrap;margin:6px 0;line-height:1.6;font-size:13.5px}
+  .cm{font-size:13px;padding:7px 0;border-top:1px dashed var(--line)}
+  .cm b{font-size:12px}
+  .cm span{font-size:11.5px;color:#8a949e;margin-left:6px}
+  .cbox{display:flex;gap:6px;margin-top:8px}
+  .cbox textarea{min-height:38px}
+  .rv{width:100%;border-collapse:collapse;font-size:13px}
+  .rv th,.rv td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left;vertical-align:top}
+  .rv th{background:var(--bg)}
+  .rvwrap{max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .busy{font-size:13px;color:var(--sub);margin-top:6px}
+  .seg{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .seg button{padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;font:inherit;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  @media (max-width:760px){
+    .app{grid-template-columns:1fr;grid-template-rows:auto 48vh 1fr}
+    #map{grid-row:2} aside{grid-row:3;border-right:0;border-top:1px solid var(--line)}
+    .me{margin-left:0;width:100%}
+    .frow{grid-template-columns:1fr;gap:2px} .row2{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<!-- 로그인·등록 -->
+<div class="gate" id="gate">
+  <div class="gbox">
+    <h2>HR 담당자 모임 지도</h2>
+    <p>익명 오픈톡 회원용입니다. 실명·연락처·회사명은 받지 않습니다.</p>
+    <div class="gtabs"><button type="button" data-g="in" class="on">로그인</button><button type="button" data-g="up">처음 등록</button></div>
+    <form class="g" id="fIn">
+      <input id="iPin" type="password" placeholder="모임 비밀번호 (단톡방 공지)" autocomplete="current-password">
+      <input id="iNick" placeholder="오픈톡 닉네임" maxlength="20">
+      <input id="iP4" type="password" inputmode="numeric" maxlength="4" placeholder="개인 PIN 4자리">
+      <div class="err" id="inErr"></div>
+      <button class="btn dark" type="submit">들어가기</button>
+    </form>
+    <form class="g" id="fUp" hidden>
+      <input id="uPin" type="password" placeholder="모임 비밀번호 (단톡방 공지)">
+      <label>오픈톡 닉네임 <span class="empty">(단톡방과 같게)</span></label><input id="uNick" maxlength="20">
+      <label>개인 PIN 4자리 <span class="empty">(로그인용, 본인만 기억)</span></label><input id="uP4" type="password" inputmode="numeric" maxlength="4">
+      <div class="row2">
+        <div><label>시·도</label><select id="uSido"></select></div>
+        <div><label>시·군·구</label><input id="uSgg" placeholder="예: 유성구, 천안시"></div>
+      </div>
+      <div class="row2">
+        <div><label>업종</label><select id="uInd"></select></div>
+        <div><label>회사 규모</label><select id="uSize"></select></div>
+        <div><label>HR 경력</label><select id="uYears"></select></div>
+        <div><label>주 직무</label><select id="uJob"></select></div>
+      </div>
+      <label>1:1 오픈톡 주소 <span class="empty">(선택, 원하는 분만)</span></label>
+      <input id="uChat" placeholder="https://open.kakao.com/o/...">
+      <div class="consent" id="consentText"></div>
+      <label class="chk"><input type="checkbox" id="uConsent"> 개인정보 수집·이용에 동의합니다</label>
+      <div class="err" id="upErr"></div>
+      <button class="btn dark" type="submit">등록하고 들어가기</button>
+    </form>
+  </div>
+</div>
+
+<!-- 프로필 -->
+<div class="modal" id="pModal"><div class="sheet wide">
+  <h2 id="pTitle">프로필</h2>
+  <div class="chips" id="pChips"></div>
+  <div id="pChat"></div>
+  <div id="pBody"></div>
+  <div class="err" id="pErr"></div>
+  <div class="actions">
+    <button class="btn" type="button" id="pMine" hidden>내 기본 정보 수정</button>
+    <button class="btn" type="button" id="pEdit" hidden>회사 현황 수정</button>
+    <button class="btn dark" type="button" id="pSave" hidden>저장</button>
+    <button class="btn" type="button" data-close>닫기</button>
+  </div>
+</div></div>
+
+<!-- 내 기본 정보 -->
+<div class="modal" id="meModal"><div class="sheet">
+  <h2>내 기본 정보</h2>
+  <div class="row2">
+    <div><label>시·도</label><select id="mSido"></select></div>
+    <div><label>시·군·구</label><input id="mSgg"></div>
+    <div><label>업종</label><select id="mInd"></select></div>
+    <div><label>회사 규모</label><select id="mSize"></select></div>
+    <div><label>HR 경력</label><select id="mYears"></select></div>
+    <div><label>주 직무</label><select id="mJob"></select></div>
+  </div>
+  <label>1:1 오픈톡 주소 (선택)</label><input id="mChat" placeholder="https://open.kakao.com/o/...">
+  <div class="err" id="mErr"></div>
+  <div class="actions"><button class="btn" type="button" data-close>취소</button><button class="btn dark" type="button" id="mSave">저장</button></div>
+</div></div>
+
+<!-- 게시판 -->
+<div class="modal" id="bModal"><div class="sheet wide">
+  <h2>질문·안건 게시판</h2>
+  <p class="lead">실무 질문, 모임 안건, 정보 공유를 올리고 댓글로 답합니다. 작성자는 닉네임으로 표시됩니다.</p>
+  <div class="seg" id="bSeg"></div>
+  <details id="bNew" style="margin-bottom:12px"><summary class="btn pri" style="display:inline-block">새 글 쓰기</summary>
+    <div style="margin-top:10px">
+      <div class="row2"><div><label>구분</label><select id="nKind"></select></div><div></div></div>
+      <label>제목</label><input id="nTitle" maxlength="100">
+      <label>내용</label><textarea id="nBody" maxlength="3000" style="min-height:130px"></textarea>
+      <div class="err" id="nErr"></div>
+      <div class="actions"><button class="btn dark" type="button" id="nSave">올리기</button></div>
+    </div>
+  </details>
+  <div id="bList"></div>
+  <div class="actions"><button class="btn" type="button" data-close>닫기</button></div>
+</div></div>
+
+<!-- 단톡방 AI -->
+<div class="modal" id="chatModal"><div class="sheet wide">
+  <h2>단톡방 내용으로 회사 현황 갱신</h2>
+  <p class="lead">오픈톡 대화를 붙여넣거나 '대화 내보내기' 파일(.txt)을 고르면, AI가 회원이 <b>자기 회사</b>에 대해 말한 내용(연봉 인상률, 근무제도 등)을 닉네임별로 찾아 확인 화면으로 보여 줍니다. 체크한 항목만 저장됩니다.<br>전화번호·이메일은 지우고 보내며, 원문 대화는 저장하지 않습니다.</p>
+  <input type="file" id="chatFile" accept=".txt,text/plain">
+  <textarea id="chatText" style="min-height:220px;margin-top:8px" placeholder="대화 내용을 붙여넣으세요. 길면 자동으로 나눠서 분석합니다."></textarea>
+  <div class="busy" id="chatInfo"></div>
+  <div class="err" id="chatErr"></div>
+  <div class="actions"><button class="btn" type="button" data-close>취소</button><button class="btn dark" type="button" id="chatGo">분석하기</button></div>
+</div></div>
+
+<!-- 확인 화면 -->
+<div class="modal" id="rvModal"><div class="sheet wide">
+  <h2 id="rvTitle">바뀔 내용 확인</h2>
+  <p class="lead">저장할 항목에 체크하세요. 값은 고쳐서 저장할 수 있습니다. 수정자는 내 닉네임으로 기록됩니다.</p>
+  <div class="rvwrap"><table class="rv"><thead><tr><th><input type="checkbox" id="rvAll" checked style="width:auto"></th><th>닉네임</th><th>항목</th><th>현재 값</th><th>새 값</th><th>근거</th></tr></thead><tbody id="rvBody"></tbody></table></div>
+  <div class="err" id="rvErr"></div>
+  <div class="actions"><button class="btn" type="button" data-close>취소</button><button class="btn dark" type="button" id="rvSave">선택 항목 저장</button></div>
+</div></div>
+
+<div class="app">
+  <header>
+    <h1>HR 담당자 모임 지도</h1>
+    <span class="stat">회원 <b id="sAll">-</b></span>
+    <span class="stat">지역 <b id="sReg">-</b></span>
+    <span class="me" id="me"></span>
+    <button class="btn" type="button" id="myBtn">내 프로필</button>
+    <button class="btn pri" type="button" id="boardBtn">질문·안건</button>
+    <button class="btn" type="button" id="chatBtn">단톡방 내용 반영</button>
+    <span class="admin" id="admin"><span class="admin-tag">관리자</span><button class="btn dark" type="button" id="dlBtn">회원 현황 다운로드</button></span>
+    <button class="btn" type="button" id="logout" style="font-weight:400;color:var(--sub)">로그아웃</button>
+  </header>
+  <aside>
+    <div class="filters">
+      <input id="q" type="search" placeholder="닉네임 검색">
+      <div class="two"><select id="fSido"></select><select id="fInd"></select></div>
+      <div class="two"><select id="fSize"></select><select id="fJob"></select></div>
+    </div>
+    <div class="count" id="count"></div>
+    <ul id="list"><li class="msg">불러오는 중…</li></ul>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ▼ Apps Script 웹 앱 URL (배포 관리 > 웹 앱 URL)로 바꾸세요
+const API_URL = 'https://script.google.com/macros/s/AKfycbxZXlyZbGGZvxJLxT3WLrZ2G3XJCpZ9N54oRMSCqBLO9qzt2nr5mV9haJ5C2ookIAZHgA/exec';
+
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function api(body){
+  let res;
+  try { res = await fetch(API_URL, { method: 'POST', credentials: 'omit', redirect: 'follow', body: JSON.stringify(body) }); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.'); }
+  if (!res.ok) throw new Error('서버 응답 ' + res.status);
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || '알 수 없는 오류');
+  return j.data;
+}
+function openModal(id){ $(id).classList.add('on'); }
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.modal').classList.remove('on'));
+document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('on'); }));
+
+let AUTH = null, D = null;
+const st = { q: '', sido: '', ind: '', size: '', job: '' };
+const AUTH_KEY = 'hr-map-auth';
+function savedAuth(){ try { return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch(e){ return null; } }
+function storeAuth(v){ try { v ? localStorage.setItem(AUTH_KEY, JSON.stringify(v)) : localStorage.removeItem(AUTH_KEY); } catch(e){} }
+function fill(sel, list, first){ $(sel).innerHTML = (first ? '<option value="">' + first + '</option>' : '') + list.map(v => '<option>' + esc(v) + '</option>').join(''); }
+
+/* ── 지도 ── */
+let map, layer;
+function initMap(){
+  map = L.map('map').setView([36.4, 127.8], 7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+  layer = L.layerGroup().addTo(map);
+}
+function region(m){ return (m.sido + ' ' + m.sgg).trim(); }
+function filtered(){
+  const q = st.q.trim().toLowerCase();
+  return D.members.filter(m => (!st.sido || m.sido === st.sido) && (!st.ind || m.ind === st.ind) &&
+    (!st.size || m.size === st.size) && (!st.job || m.job === st.job) && (!q || m.nick.toLowerCase().includes(q)));
+}
+function render(){
+  const list = filtered();
+  layer.clearLayers();
+  const groups = {};
+  list.forEach(m => { if (m.lat != null) (groups[region(m)] = groups[region(m)] || []).push(m); });
+  const pts = [];
+  Object.entries(groups).forEach(([rg, ms]) => {
+    const n = ms.length, sz = Math.min(26 + n * 4, 54);
+    const icon = L.divIcon({ className: '', html: '<div class="rlabel" style="width:' + sz + 'px;height:' + sz + 'px">' + n + '</div>', iconSize: [sz, sz] });
+    L.marker([ms[0].lat, ms[0].lng], { icon: icon }).bindPopup(
+      '<div class="pop"><h3>' + esc(rg) + ' · ' + n + '명</h3>' +
+      ms.map(m => '<div class="p"><span><b>' + esc(m.nick) + '</b><br><span style="color:#5d6875">' + esc(m.ind) + ' · ' + esc(m.size) + '</span></span>' +
+        '<button type="button" class="open-p" data-id="' + esc(m.id) + '">프로필</button></div>').join('') + '</div>').addTo(layer);
+    pts.push([ms[0].lat, ms[0].lng]);
+  });
+  if (pts.length > 1) map.fitBounds(L.latLngBounds(pts).pad(0.2), { maxZoom: 11 });
+  else if (pts.length === 1) map.setView(pts[0], 11);
+
+  $('count').textContent = '표시 ' + list.length + '명' + (list.some(m => m.lat == null) ? ' · 위치 미확인 ' + list.filter(m => m.lat == null).length + '명' : '');
+  $('list').innerHTML = list.length ? list.map(m =>
+    '<li class="m open-p" data-id="' + esc(m.id) + '"><div><div class="nk">' + esc(m.nick) + '</div>' +
+    '<div class="tg">' + esc(m.ind) + ' · ' + esc(m.size) + ' · ' + esc(m.years) + ' · ' + esc(m.job) + '</div>' +
+    (m.chat ? '<a class="chatlink" href="' + esc(m.chat) + '" target="_blank" rel="noopener">1:1 오픈톡</a>' : '') + '</div>' +
+    '<div class="rg">' + esc(region(m)) + '<br>' + (m.filled ? '현황 ' + m.filled + '개' : '') + '</div></li>').join('')
+    : '<li class="msg">조건에 맞는 회원이 없습니다.</li>';
+}
+document.addEventListener('click', e => {
+  if (e.target.closest('.chatlink')) return;
+  const b = e.target.closest('.open-p');
+  if (b) openProfile(b.dataset.id);
+});
+
+function load(d){
+  D = d;
+  $('me').innerHTML = '<b>' + esc(d.me.nick) + '</b> · ' + esc(region(d.me));
+  $('admin').classList.toggle('on', !!d.isAdmin);
+  $('sAll').textContent = d.members.length;
+  $('sReg').textContent = new Set(d.members.map(region)).size;
+  const sidos = d.options.sido.filter(s => d.members.some(m => m.sido === s));
+  fill('fSido', sidos, '전체 시·도'); fill('fInd', d.options.ind, '전체 업종');
+  fill('fSize', d.options.size, '전체 규모'); fill('fJob', d.options.job, '전체 직무');
+  ['fSido', 'fInd', 'fSize', 'fJob'].forEach((id, i) => $(id).value = st[['sido', 'ind', 'size', 'job'][i]]);
+  fill('nKind', d.options.kinds);
+  render();
+}
+$('q').oninput = e => { st.q = e.target.value; render(); };
+[['fSido', 'sido'], ['fInd', 'ind'], ['fSize', 'size'], ['fJob', 'job']].forEach(([id, k]) => $(id).onchange = e => { st[k] = e.target.value; render(); });
+
+/* ── 로그인·등록 ── */
+const OPT = { sido: ['서울특별시','부산광역시','대구광역시','인천광역시','광주광역시','대전광역시','울산광역시','세종특별자치시','경기도','강원특별자치도','충청북도','충청남도','전북특별자치도','전라남도','경상북도','경상남도','제주특별자치도'],
+  ind: ['제조','IT·SW','유통·서비스','건설·부동산','금융·보험','의료·바이오','물류·운수','교육','공공·공기업','기타'],
+  size: ['29명 이하','30~99명','100~299명','300~999명','1,000명 이상'], years: ['1~3년','4~7년','8~12년','13년 이상'],
+  job: ['인사 총괄','채용','평가·보상','노무','교육(HRD)','인사·총무 겸임','기타'] };
+function fillForm(p){ fill(p + 'Sido', OPT.sido); fill(p + 'Ind', OPT.ind); fill(p + 'Size', OPT.size); fill(p + 'Years', OPT.years); fill(p + 'Job', OPT.job); }
+fillForm('u'); fillForm('m'); $('uSido').value = '대전광역시';
+$('consentText').textContent = '수집 항목: 닉네임, 지역(시·군·구), 업종, 규모, 경력, 직무, 1:1 오픈톡 주소(선택), 본인 프로필에 입력한 회사 현황 · 이용 목적: 모임 회원 지도와 정보 공유 · 보유 기간: 탈퇴 시까지 · 실명·연락처·회사명은 받지 않습니다.';
+document.querySelectorAll('.gtabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.gtabs button').forEach(x => x.classList.toggle('on', x === b));
+  $('fIn').hidden = b.dataset.g !== 'in'; $('fUp').hidden = b.dataset.g !== 'up';
+});
+function showGate(msg){ $('gate').classList.add('on'); $('inErr').textContent = msg || ''; }
+function enter(a, d){ AUTH = a; storeAuth(a); $('gate').classList.remove('on'); load(d); }
+function loginErr(m){ return m === 'PIN' ? '모임 비밀번호가 맞지 않습니다.' : m === 'ID' ? '닉네임 또는 개인 PIN이 맞지 않습니다. 처음이면 [처음 등록]을 눌러 주세요.' : m; }
+async function doLogin(a, silent){
+  try { enter(a, await api({ action: 'login', auth: a })); }
+  catch (err) { storeAuth(null); showGate(silent ? '' : loginErr(String(err.message))); }
+}
+$('fIn').onsubmit = e => {
+  e.preventDefault();
+  const a = { pin: $('iPin').value.trim(), nick: $('iNick').value.trim(), p4: $('iP4').value.trim() };
+  if (!a.pin || !a.nick || !/^\d{4}$/.test(a.p4)) { $('inErr').textContent = '비밀번호, 닉네임, PIN 4자리를 모두 입력해 주세요.'; return; }
+  $('inErr').textContent = '확인 중…'; doLogin(a);
+};
+$('fUp').onsubmit = async e => {
+  e.preventDefault();
+  const d = { pin: $('uPin').value.trim(), nick: $('uNick').value.trim(), p4: $('uP4').value.trim(), sido: $('uSido').value,
+              sgg: $('uSgg').value.trim(), ind: $('uInd').value, size: $('uSize').value, years: $('uYears').value,
+              job: $('uJob').value, chat: $('uChat').value.trim(), consent: $('uConsent').checked };
+  if (!/^\d{4}$/.test(d.p4)) { $('upErr').textContent = '개인 PIN은 숫자 4자리입니다.'; return; }
+  $('upErr').textContent = '등록 중…';
+  try { enter({ pin: d.pin, nick: d.nick, p4: d.p4 }, await api({ action: 'signup', data: d })); }
+  catch (err) { $('upErr').textContent = String(err.message) === 'PIN' ? '모임 비밀번호가 맞지 않습니다.' : err.message; }
+};
+$('logout').onclick = () => { storeAuth(null); AUTH = null; ['iPin', 'iNick', 'iP4'].forEach(id => $(id).value = ''); showGate(''); };
+
+/* ── 프로필 ── */
+let P = null, EDIT = false;
+async function openProfile(id){
+  EDIT = false; $('pErr').textContent = ''; $('pTitle').textContent = '불러오는 중…'; $('pBody').innerHTML = ''; $('pChips').innerHTML = ''; $('pChat').innerHTML = '';
+  openModal('pModal');
+  try { P = await api({ action: 'profile', auth: AUTH, id: id }); renderProfile(); }
+  catch (err) { $('pErr').textContent = '불러오기 실패: ' + err.message; }
+}
+function renderProfile(){
+  $('pTitle').textContent = P.nick;
+  $('pChips').innerHTML = [region(P), P.ind, P.size, 'HR ' + P.years, P.job].map(v => '<span class="chip">' + esc(v) + '</span>').join('');
+  $('pChat').innerHTML = P.chat ? '<a class="chatlink" href="' + esc(P.chat) + '" target="_blank" rel="noopener">1:1 오픈톡으로 대화하기</a>' : '';
+  let html = '', last = '';
+  P.fields.forEach(f => {
+    if (f.cat !== last) { html += '<div class="cat">' + esc(f.cat) + '</div>'; last = f.cat; }
+    const v = EDIT ? '<textarea data-f="' + esc(f.key) + '" placeholder="' + esc(f.hint) + '" style="min-height:40px">' + esc(f.value) + '</textarea>'
+                   : (f.value ? '<div class="fv">' + esc(f.value) + '</div>' : '<div class="empty">미입력</div>');
+    const meta = f.by ? '<div class="fm">' + esc(f.by) + ' · ' + esc(f.at) + (f.src && f.src !== '직접 수정' ? ' · ' + esc(f.src) : '') + '</div>' : '';
+    html += '<div class="frow"><div class="fl">' + esc(f.label) + '</div><div>' + v + meta + '</div></div>';
+  });
+  $('pBody').innerHTML = html;
+  const mine = P.id === D.me.id;
+  $('pMine').hidden = !mine || EDIT; $('pEdit').hidden = !P.canEdit || EDIT; $('pSave').hidden = !EDIT;
+}
+$('pEdit').onclick = () => { EDIT = true; renderProfile(); };
+$('pSave').onclick = async () => {
+  const changes = [];
+  $('pBody').querySelectorAll('textarea[data-f]').forEach(t => {
+    const f = P.fields.find(x => x.key === t.dataset.f);
+    if (f && t.value.trim() !== String(f.value).trim()) changes.push({ id: P.id, field: f.key, value: t.value.trim() });
+  });
+  if (!changes.length) { EDIT = false; renderProfile(); return; }
+  $('pSave').disabled = true; $('pErr').textContent = '저장 중…';
+  try { const r = await api({ action: 'save', auth: AUTH, changes: changes, source: '직접 수정' });
+        $('pErr').textContent = r.saved + '개 항목을 저장했습니다.'; await openProfile(P.id); refresh(); }
+  catch (err) { $('pErr').textContent = '저장 실패: ' + err.message; }
+  $('pSave').disabled = false;
+};
+$('myBtn').onclick = () => openProfile(D.me.id);
+$('pMine').onclick = () => {
+  const m = D.me;
+  $('mSido').value = m.sido; $('mSgg').value = m.sgg; $('mInd').value = m.ind; $('mSize').value = m.size;
+  $('mYears').value = m.years; $('mJob').value = m.job; $('mChat').value = m.chat || ''; $('mErr').textContent = '';
+  $('pModal').classList.remove('on'); openModal('meModal');
+};
+$('mSave').onclick = async () => {
+  const d = { sido: $('mSido').value, sgg: $('mSgg').value.trim(), ind: $('mInd').value, size: $('mSize').value,
+              years: $('mYears').value, job: $('mJob').value, chat: $('mChat').value.trim() };
+  $('mSave').disabled = true; $('mErr').textContent = '저장 중…';
+  try { load(await api({ action: 'updateMe', auth: AUTH, data: d })); $('meModal').classList.remove('on'); }
+  catch (err) { $('mErr').textContent = err.message; }
+  $('mSave').disabled = false;
+};
+async function refresh(){ try { load(await api({ action: 'login', auth: AUTH })); } catch (e) {} }
+
+/* ── 게시판 ── */
+let POSTS = [], BF = '';
+async function loadPosts(){
+  $('bList').innerHTML = '<p class="lead">불러오는 중…</p>';
+  try { POSTS = await api({ action: 'posts', auth: AUTH }); renderPosts(); }
+  catch (err) { $('bList').innerHTML = '<p class="err">불러오기 실패: ' + esc(err.message) + '</p>'; }
+}
+function renderPosts(){
+  $('bSeg').innerHTML = ['전체'].concat(D.options.kinds).map(k => '<button type="button" data-k="' + (k === '전체' ? '' : esc(k)) + '" class="' + ((k === '전체' ? '' : k) === BF ? 'on' : '') + '">' + esc(k) + '</button>').join('');
+  $('bSeg').querySelectorAll('button').forEach(b => b.onclick = () => { BF = b.dataset.k; renderPosts(); });
+  const list = POSTS.filter(p => !BF || p.kind === BF);
+  $('bList').innerHTML = list.length ? list.map(p => {
+    const mine = p.by === D.me.nick, adm = D.isAdmin;
+    const opts = adm ? ['진행', '해결', '안건상정', '숨김'] : mine ? ['진행', '해결', '숨김'] : [];
+    return '<div class="post"><div class="top"><span class="t">' + esc(p.title) + '</span><span class="meta">' + esc(p.kind) + ' · ' + esc(p.by) + ' · ' + esc(p.at) + ' · 댓글 ' + p.comments.length + '</span>' +
+      '<span class="st ' + esc(p.status) + '">' + esc(p.status) + '</span></div>' +
+      '<details><summary style="font-size:13px;cursor:pointer;margin-top:6px">내용·댓글 보기</summary><p>' + esc(p.body) + '</p>' +
+      p.comments.map(c => '<div class="cm"><b>' + esc(c.by) + '</b><span>' + esc(c.at) + '</span><div style="white-space:pre-wrap">' + esc(c.body) + '</div></div>').join('') +
+      '<div class="cbox"><textarea data-no="' + esc(p.no) + '" placeholder="댓글 쓰기" maxlength="1500"></textarea><button class="btn dark" type="button" data-c="' + esc(p.no) + '">등록</button></div>' +
+      (opts.length ? '<div class="actions" style="justify-content:flex-start;margin-top:8px"><span class="meta" style="align-self:center">상태</span>' +
+        opts.map(o => '<button class="btn" type="button" data-s="' + esc(o) + '" data-no="' + esc(p.no) + '"' + (o === p.status ? ' disabled' : '') + '>' + esc(o) + '</button>').join('') + '</div>' : '') +
+      '</details></div>';
+  }).join('') : '<p class="lead">아직 글이 없습니다.</p>';
+  $('bList').querySelectorAll('[data-c]').forEach(b => b.onclick = async () => {
+    const ta = $('bList').querySelector('textarea[data-no="' + b.dataset.c + '"]');
+    if (!ta.value.trim()) return;
+    b.disabled = true;
+    try { await api({ action: 'comment', auth: AUTH, no: b.dataset.c, body: ta.value }); await loadPosts(); }
+    catch (err) { alert('댓글 실패: ' + err.message); b.disabled = false; }
+  });
+  $('bList').querySelectorAll('[data-s]').forEach(b => b.onclick = async () => {
+    try { await api({ action: 'postStatus', auth: AUTH, no: b.dataset.no, status: b.dataset.s }); await loadPosts(); }
+    catch (err) { alert(err.message); }
+  });
+}
+$('boardBtn').onclick = () => { openModal('bModal'); loadPosts(); };
+$('nSave').onclick = async () => {
+  const d = { kind: $('nKind').value, title: $('nTitle').value.trim(), body: $('nBody').value.trim() };
+  if (!d.title || !d.body) { $('nErr').textContent = '제목과 내용을 입력해 주세요.'; return; }
+  $('nSave').disabled = true; $('nErr').textContent = '올리는 중…';
+  try { await api({ action: 'post', auth: AUTH, data: d }); $('nTitle').value = ''; $('nBody').value = ''; $('nErr').textContent = '';
+        $('bNew').open = false; await loadPosts(); }
+  catch (err) { $('nErr').textContent = err.message; }
+  $('nSave').disabled = false;
+};
+
+/* ── 단톡방 AI ── */
+function cleanChat(t){
+  const drop = /님이 들어왔습니다|님이 나갔습니다|님을 내보냈습니다|부방장|방장이|사칭에 유의|운영정책을 위반|^저장한 날짜|^Talk_|^20\d\d년 \d{1,2}월 \d{1,2}일 .요일\s*$|:\s*(사진( \d+장)?|동영상|이모티콘|파일: .*|삭제된 메시지입니다\.?)\s*$/;
+  return t.split(/\r?\n/).filter(l => l.trim() && !drop.test(l))
+    .map(l => l.replace(/^20(\d\d)\. (\d{1,2})\. (\d{1,2})\. \d{1,2}:\d{2}, /, '$1.$2.$3 ').replace(/https?:\/\/\S+/g, '[링크]')).join('\n');
+}
+function chunkText(t, size){
+  const out = []; let cur = '';
+  t.split('\n').forEach(l => { if (cur.length + l.length + 1 > size && cur) { out.push(cur); cur = ''; } cur += (cur ? '\n' : '') + l.slice(0, size); });
+  if (cur) out.push(cur);
+  return out;
+}
+$('chatBtn').onclick = () => { $('chatErr').textContent = ''; $('chatInfo').textContent = ''; openModal('chatModal'); };
+$('chatFile').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('chatText').value = await f.text();
+  $('chatInfo').textContent = f.name + ' · ' + $('chatText').value.length.toLocaleString() + '자'; };
+let CHAT = null;
+function showChatResult(){
+  const ups = Object.values(CHAT.merged);
+  $('chatInfo').innerHTML = '';
+  if (!ups.length) { $('chatErr').textContent = '등록된 회원이 자기 회사에 대해 말한 내용을 찾지 못했습니다.'; return; }
+  $('chatModal').classList.remove('on'); openReview(ups);
+}
+async function runChat(){
+  $('chatGo').disabled = true; $('chatErr').textContent = '';
+  const Pp = CHAT.parts;
+  try {
+    for (let i = CHAT.next; i < Pp.length; i++) {
+      $('chatInfo').textContent = 'AI가 분석하는 중… ' + (i + 1) + ' / ' + Pp.length;
+      let r, tries = 0;
+      while (true) {
+        try { r = await api({ action: 'aiChat', auth: AUTH, text: Pp[i] }); break; }
+        catch (e) {
+          if (!/AI 오류 (429|500|503)/.test(e.message) || ++tries > 2) throw e;
+          for (let s = 40 * tries; s > 0; s--) { $('chatInfo').textContent = 'AI 서버가 혼잡합니다. ' + s + '초 뒤 다시 시도합니다… (' + (i + 1) + ' / ' + Pp.length + ')'; await new Promise(ok => setTimeout(ok, 1000)); }
+        }
+      }
+      r.updates.forEach(u => { CHAT.merged[u.id + '|' + u.field] = u; });
+      CHAT.next = i + 1;
+    }
+    showChatResult(); $('chatText').value = ''; $('chatFile').value = '';
+  } catch (err) {
+    const n = Object.keys(CHAT.merged).length;
+    $('chatErr').textContent = '실패: ' + (/AI 오류 (429|500|503)/.test(err.message) ? 'AI 서버가 계속 혼잡합니다. 몇 분 뒤 이어서 하세요.' : err.message);
+    $('chatInfo').innerHTML = '<div class="actions" style="justify-content:flex-start"><button class="btn dark" type="button" id="chatResume">' + (CHAT.next + 1) + ' / ' + Pp.length + ' 조각부터 이어서</button>' +
+      (n ? '<button class="btn" type="button" id="chatPartial">찾은 ' + n + '건 먼저 확인</button>' : '') + '</div>';
+    $('chatResume').onclick = () => runChat();
+    if (n) $('chatPartial').onclick = () => showChatResult();
+  }
+  $('chatGo').disabled = false;
+}
+$('chatGo').onclick = () => {
+  const raw = $('chatText').value.trim();
+  if (raw.length < 10) { $('chatErr').textContent = '대화 내용을 붙여넣어 주세요.'; return; }
+  const parts = chunkText(cleanChat(raw), 45000);
+  if (parts.length > 15) { $('chatErr').textContent = '대화가 너무 깁니다. 최근 몇 달 분량만 넣어 주세요.'; return; }
+  CHAT = { parts: parts, next: 0, merged: {} }; runChat();
+};
+let RV = [];
+function openReview(items){
+  RV = items; $('rvErr').textContent = ''; $('rvAll').checked = true;
+  $('rvTitle').textContent = '단톡방에서 찾은 내용 확인 (' + items.length + '건)';
+  $('rvBody').innerHTML = items.map((u, i) => '<tr><td><input type="checkbox" data-i="' + i + '" checked style="width:auto"></td><td>' + esc(u.nick) + '</td><td>' + esc(u.label) +
+    '</td><td style="color:#5d6875">' + (u.current ? esc(u.current) : '—') + '</td><td><input type="text" data-v="' + i + '" value="' + esc(u.value) + '"></td><td style="color:#8a949e;font-size:12px">' + esc(u.evidence) + '</td></tr>').join('');
+  openModal('rvModal');
+}
+$('rvAll').onchange = e => $('rvBody').querySelectorAll('input[type=checkbox]').forEach(c => c.checked = e.target.checked);
+$('rvSave').onclick = async () => {
+  const changes = [];
+  $('rvBody').querySelectorAll('input[type=checkbox]').forEach(c => { if (!c.checked) return;
+    const u = RV[+c.dataset.i], v = $('rvBody').querySelector('input[data-v="' + c.dataset.i + '"]').value.trim();
+    if (v) changes.push({ id: u.id, field: u.field, value: v }); });
+  if (!changes.length) { $('rvErr').textContent = '저장할 항목을 고르세요.'; return; }
+  $('rvSave').disabled = true; $('rvErr').textContent = '저장 중…';
+  try { const r = await api({ action: 'save', auth: AUTH, changes: changes, source: '단톡방 추출(AI)' });
+        $('rvModal').classList.remove('on'); alert(r.saved + '개 항목을 저장했습니다.'); refresh(); }
+  catch (err) { $('rvErr').textContent = '저장 실패: ' + err.message; }
+  $('rvSave').disabled = false;
+};
+
+/* ── 관리자 다운로드 ── */
+function toCsv(head, rows){
+  const cell = v => { let s = v == null ? '' : String(v); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  return '﻿' + [head].concat(rows).map(r => r.map(cell).join(',')).join('\r\n');
+}
+$('dlBtn').onclick = async () => {
+  try { const r = await api({ action: 'roster', auth: AUTH });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCsv(r.head, r.rows)], { type: 'text/csv;charset=utf-8' }));
+        a.download = r.filename; document.body.appendChild(a); a.click(); a.remove(); }
+  catch (err) { alert('다운로드 실패: ' + err.message); }
+};
+
+initMap();
+const sv = savedAuth();
+if (sv) doLogin(sv, true); else showGate('');
+</script>
+</body>
+</html>
